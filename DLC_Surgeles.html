@@ -357,6 +357,7 @@
     </div>
     <div style="display:flex; gap:8px;">
       <button class="btn-header" onclick="envoyerVersSheets()" id="btnSheets">📊 Sheets</button>
+      <button class="btn-header" onclick="importerDepuisSheets()" id="btnImport">📥 Importer</button>
       <button class="btn-header" onclick="exporterDonnees()">📤 Export</button>
     </div>
   </div>
@@ -772,6 +773,56 @@
       statutEl.style.background = '#FEE2E2';
       statutEl.style.color = '#991B1B';
       statutEl.textContent = '❌ Échec de l\'envoi — vérifie l\'URL du script (appui long sur 📊 Sheets pour la modifier).';
+    }
+  }
+
+  // ── IMPORT DEPUIS GOOGLE SHEETS ──────────────────────────────────────
+  async function importerDepuisSheets() {
+    let url = getUrlSheets();
+    if (!url) {
+      url = demanderUrlSheets();
+      if (!url) return;
+    }
+
+    const statutEl = document.getElementById('syncStatut');
+    statutEl.style.display = 'block';
+    statutEl.style.background = '#EFF6FF';
+    statutEl.style.color = '#1D4ED8';
+    statutEl.textContent = '⏳ Récupération depuis Google Sheets…';
+
+    try {
+      const resp = await fetch(url, { method: 'GET' });
+      const data = await resp.json();
+      if (!data.ok) throw new Error(data.error || 'Erreur inconnue');
+
+      const distants = data.produits || [];
+      if (distants.length === 0) {
+        statutEl.style.background = '#FEF3C7';
+        statutEl.style.color = '#92400E';
+        statutEl.textContent = 'ℹ️ Aucun produit trouvé dans le Google Sheet.';
+        return;
+      }
+
+      const remplacer = confirm(
+        `${distants.length} produit${distants.length > 1 ? 's' : ''} trouvé${distants.length > 1 ? 's' : ''} dans Google Sheets.\n\n` +
+        `Remplacer la liste actuelle de cet appareil par celle de Sheets ?`
+      );
+      if (!remplacer) {
+        statutEl.style.display = 'none';
+        return;
+      }
+
+      produits = distants.map(p => ({ ean: p.ean || '', nom: p.nom, dlc: p.dlc, qte: p.qte }));
+      sauverDonnees();
+      rendreListe();
+
+      statutEl.style.background = '#DCFCE7';
+      statutEl.style.color = '#166534';
+      statutEl.textContent = `✅ ${produits.length} produit${produits.length > 1 ? 's' : ''} importé${produits.length > 1 ? 's' : ''} depuis Google Sheets.`;
+    } catch (e) {
+      statutEl.style.background = '#FEE2E2';
+      statutEl.style.color = '#991B1B';
+      statutEl.textContent = '❌ Échec de l\'import — vérifie l\'URL du script (appui long sur 📊 Sheets pour la modifier).';
     }
   }
 
