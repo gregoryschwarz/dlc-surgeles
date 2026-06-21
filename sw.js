@@ -1,5 +1,5 @@
 // Service worker — DLC Surgelés
-const CACHE = 'dlc-surgeles-v3';
+const CACHE = 'dlc-surgeles-v4';
 const FICHIERS = [
   './DLC_Surgeles.html',
   './manifest.json',

@@ -151,6 +151,8 @@
     .produit.orange { border-left-color: var(--orange); background: linear-gradient(to right, #FFFAF5, white); }
     .produit.jaune { border-left-color: var(--jaune); background: linear-gradient(to right, #FEFFF5, white); }
     .produit.vert { border-left-color: var(--vert); }
+    .produit.traite { opacity: 0.5; filter: grayscale(0.5); background: var(--gris) !important; }
+    .produit.traite .produit-nom { text-decoration: line-through; }
 
     .badge-statut {
       width: 44px;
@@ -184,6 +186,8 @@
     }
     .btn-edit { background: var(--gris); color: var(--texte-doux); }
     .btn-del { background: var(--rouge-clair); color: var(--rouge); }
+    .btn-traite { background: var(--vert-clair); color: var(--vert); }
+    .btn-traite.actif { background: var(--vert); color: white; }
 
     .vide {
       text-align: center;
@@ -588,7 +592,7 @@
     }
 
     liste.innerHTML = affichage.map(p => `
-      <div class="produit ${p._statut}">
+      <div class="produit ${p._statut} ${p.traite ? 'traite' : ''}">
         <div class="badge-statut">${getEmoji(p._statut)}</div>
         <div class="produit-info">
           <div class="produit-nom">${echapper(p.nom)}</div>
@@ -600,8 +604,10 @@
           }; font-weight:600;">${getJoursRestants(p.dlc)}</div>
           <div class="produit-qte">📦 ${p.qte} unité${p.qte > 1 ? 's' : ''}</div>
           ${p.ean ? `<div class="produit-ean">🔖 ${p.ean}</div>` : ''}
+          ${p.traite ? `<div class="produit-ean">✅ Traité</div>` : ''}
         </div>
         <div class="produit-actions">
+          <button class="btn-action btn-traite ${p.traite ? 'actif' : ''}" onclick="basculerTraite(${p._idx})" title="${p.traite ? 'Annuler' : 'Marquer comme traité'}">✅</button>
           <button class="btn-action btn-edit" onclick="editer(${p._idx})">✏️</button>
           <button class="btn-action btn-del" onclick="supprimer(${p._idx})">🗑</button>
         </div>
@@ -665,9 +671,9 @@
     if (!dlc) { alert('Veuillez saisir une date de péremption.'); return; }
 
     if (editIndex >= 0) {
-      produits[editIndex] = { ean, nom, dlc, qte };
+      produits[editIndex] = { ...produits[editIndex], ean, nom, dlc, qte };
     } else {
-      produits.push({ ean, nom, dlc, qte });
+      produits.push({ ean, nom, dlc, qte, traite: false });
     }
 
     fermerModal();
@@ -684,6 +690,11 @@
     }
   }
 
+  function basculerTraite(idx) {
+    produits[idx].traite = !produits[idx].traite;
+    rendreListe();
+  }
+
   // ── SAUVEGARDE ───────────────────────────────────────────────────────
   function sauverDonnees() {
     localStorage.setItem('dlc_surgeles', JSON.stringify(produits));
@@ -695,10 +706,10 @@
       .map(p => ({ ...p, statut: getStatut(p.dlc) }))
       .sort((a, b) => a.dlc.localeCompare(b.dlc));
 
-    const lignes = ['Gencod,Nom du produit,DLC,Quantité,Statut'];
+    const lignes = ['Gencod,Nom du produit,DLC,Quantité,Statut,Traité'];
     sorted.forEach(p => {
       const statuts = { rouge: 'Expiré', orange: 'Ce mois', jaune: 'Mois prochain', vert: 'OK' };
-      lignes.push(`${p.ean || ''},\"${p.nom}\",${p.dlc},${p.qte},${statuts[p.statut]}`);
+      lignes.push(`${p.ean || ''},\"${p.nom}\",${p.dlc},${p.qte},${statuts[p.statut]},${p.traite ? 'Oui' : 'Non'}`);
     });
 
     const csv = lignes.join('\n');
@@ -751,7 +762,8 @@
         qte: p.qte,
         statut: getStatut(p.dlc),
         statutLabel: labels[getStatut(p.dlc)],
-        joursRestants: getJoursRestants(p.dlc)
+        joursRestants: getJoursRestants(p.dlc),
+        traite: !!p.traite
       }))
     };
 
@@ -812,7 +824,7 @@
         return;
       }
 
-      produits = distants.map(p => ({ ean: p.ean || '', nom: p.nom, dlc: p.dlc, qte: p.qte }));
+      produits = distants.map(p => ({ ean: p.ean || '', nom: p.nom, dlc: p.dlc, qte: p.qte, traite: !!p.traite }));
       sauverDonnees();
       rendreListe();
 
