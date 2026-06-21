@@ -348,6 +348,83 @@
 
     /* EAN sur fiche produit */
     .produit-ean { font-size: 11px; color: var(--texte-doux); margin-top: 3px; font-family: monospace; letter-spacing: 0.5px; }
+
+    /* CATÉGORIE */
+    .produit-cat { font-size: 11px; color: var(--bleu-fonce); margin-top: 3px; font-weight: 600; }
+    .select-cat {
+      background: white;
+      border: 1.5px solid var(--gris-bord);
+      border-radius: 12px;
+      padding: 10px 10px;
+      font-size: 13px;
+      color: var(--texte-doux);
+      cursor: pointer;
+      max-width: 130px;
+    }
+
+    /* RÉSUMÉ STATS */
+    .stats-resume { font-size: 12px; opacity: 0.85; margin-top: 4px; }
+
+    /* MENU (bottom sheet) */
+    .menu-item {
+      width: 100%;
+      text-align: left;
+      background: none;
+      border: none;
+      padding: 14px 20px;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--texte);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+    }
+    .menu-item:active { background: var(--gris); }
+    .menu-separateur { height: 1px; background: var(--gris-bord); margin: 4px 20px; }
+
+    /* HISTORIQUE */
+    .hist-liste { padding: 0 20px; max-height: 50vh; overflow-y: auto; }
+    .hist-item { padding: 10px 0; border-bottom: 1px solid var(--gris-bord); }
+    .hist-item .hist-action { font-size: 14px; font-weight: 700; }
+    .hist-item .hist-date { font-size: 12px; color: var(--texte-doux); margin-top: 2px; }
+    .hist-vide { text-align: center; padding: 40px 20px; color: var(--texte-doux); font-size: 14px; }
+
+    /* TOAST (annuler suppression) */
+    .toast {
+      position: fixed;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #1E293B;
+      color: white;
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+      z-index: 400;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s, transform 0.25s;
+    }
+    .toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: all; }
+    .toast button { background: var(--bleu); color: white; border: none; border-radius: 8px; padding: 6px 12px; font-size: 13px; font-weight: 700; cursor: pointer; }
+
+    /* RETRY (erreur réseau) */
+    .btn-retry {
+      margin-left: 8px;
+      background: rgba(0,0,0,0.1);
+      border: none;
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      color: inherit;
+    }
   </style>
 </head>
 <body>
@@ -358,11 +435,12 @@
     <div>
       <h1><span>🧊</span> DLC Surgelés</h1>
       <div class="date-auj" id="dateAuj"></div>
+      <div class="stats-resume" id="statsResume"></div>
     </div>
     <div style="display:flex; gap:8px;">
       <button class="btn-header" onclick="envoyerVersSheets()" id="btnSheets">📊 Sheets</button>
       <button class="btn-header" onclick="importerDepuisSheets()" id="btnImport">📥 Importer</button>
-      <button class="btn-header" onclick="exporterDonnees()">📤 Export</button>
+      <button class="btn-header" onclick="ouvrirMenu()">⋯</button>
     </div>
   </div>
 </div>
@@ -412,6 +490,10 @@
 <!-- BARRE RECHERCHE -->
 <div class="barre">
   <input class="recherche" type="search" placeholder="🔍 Rechercher un produit..." id="inputRecherche" oninput="rendreListe()">
+  <select class="select-cat" id="selectCategorie" onchange="rendreListe()">
+    <option value="">Toutes catégories</option>
+  </select>
+  <button class="btn-tri" onclick="changerTri()" id="btnTri">DLC ↑</button>
 </div>
 
 <!-- SECTION TITRE -->
@@ -457,6 +539,20 @@
       <input type="number" id="inputQte" placeholder="Ex : 24" min="0">
     </div>
 
+    <div class="champ">
+      <label>Catégorie</label>
+      <select id="inputCategorie">
+        <option value="">— Non catégorisé —</option>
+        <option value="Viande">🥩 Viande</option>
+        <option value="Poisson / Fruits de mer">🐟 Poisson / Fruits de mer</option>
+        <option value="Légumes">🥦 Légumes</option>
+        <option value="Plats préparés">🍱 Plats préparés</option>
+        <option value="Pain / Viennoiserie">🥐 Pain / Viennoiserie</option>
+        <option value="Glaces / Desserts">🍦 Glaces / Desserts</option>
+        <option value="Autre">📦 Autre</option>
+      </select>
+    </div>
+
     <div class="modal-btns">
       <button class="btn-annuler" onclick="fermerModal()">Annuler</button>
       <button class="btn-sauver" onclick="sauvegarder()">💾 Enregistrer</button>
@@ -464,11 +560,53 @@
   </div>
 </div>
 
+<!-- MENU (⋯) -->
+<div class="overlay" id="overlayMenu" onclick="fermerSiDehorsMenu(event)">
+  <div class="modal">
+    <div class="modal-poignee"></div>
+    <div class="modal-titre">Options</div>
+    <button class="menu-item" onclick="fermerMenu(); exporterDonnees();">📤 Exporter en CSV</button>
+    <button class="menu-item" onclick="fermerMenu(); genererRapportPDF();">🧾 Rapport PDF</button>
+    <button class="menu-item" onclick="fermerMenu(); ouvrirHistorique();">🕒 Historique des actions</button>
+    <div class="menu-separateur"></div>
+    <button class="menu-item" onclick="fermerMenu(); demanderUrlSheets();">⚙️ Configurer Google Sheets</button>
+  </div>
+</div>
+
+<!-- HISTORIQUE -->
+<div class="overlay" id="overlayHistorique" onclick="fermerSiDehorsHistorique(event)">
+  <div class="modal">
+    <div class="modal-poignee"></div>
+    <div class="modal-titre">🕒 Historique des actions</div>
+    <div class="hist-liste" id="histListe"></div>
+    <div class="modal-btns">
+      <button class="btn-annuler" onclick="fermerHistorique()">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <span id="toastTexte"></span>
+  <button id="toastBtn" onclick="actionToast()"></button>
+</div>
+
 <script>
   // ── DONNÉES ──────────────────────────────────────────────────────────
   let produits = JSON.parse(localStorage.getItem('dlc_surgeles') || '[]');
   let filtreActif = 'tous';
   let editIndex = -1;
+  let historique = JSON.parse(localStorage.getItem('dlc_surgeles_historique') || '[]');
+  let triActif = 'dlc';
+  let triSens = 1; // 1 = croissant, -1 = décroissant
+  let categorieActive = '';
+  let dernierSupprime = null; // { item, idx } pour l'annulation
+  let toastTimer = null;
+
+  const CATEGORIES = {
+    'Viande': '🥩', 'Poisson / Fruits de mer': '🐟', 'Légumes': '🥦',
+    'Plats préparés': '🍱', 'Pain / Viennoiserie': '🥐', 'Glaces / Desserts': '🍦', 'Autre': '📦'
+  };
 
   // ── INIT ─────────────────────────────────────────────────────────────
   function init() {
@@ -483,6 +621,15 @@
     if (estIOS && !estInstalle) {
       document.getElementById('installBanner').classList.remove('hidden');
     }
+
+    // Liste déroulante des catégories
+    const sel = document.getElementById('selectCategorie');
+    Object.keys(CATEGORIES).forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c;
+      opt.textContent = CATEGORIES[c] + ' ' + c;
+      sel.appendChild(opt);
+    });
 
     rendreListe();
   }
@@ -523,10 +670,18 @@
   function rendreListe() {
     sauverDonnees();
 
-    // Tri par DLC
+    // Tri
+    const comparateurs = {
+      dlc:  (a, b) => a.dlc.localeCompare(b.dlc),
+      nom:  (a, b) => a.nom.localeCompare(b.nom, 'fr'),
+      qte:  (a, b) => a.qte - b.qte
+    };
     const sorted = [...produits]
       .map((p, i) => ({ ...p, _idx: i, _statut: getStatut(p.dlc) }))
-      .sort((a, b) => a.dlc.localeCompare(b.dlc));
+      .sort((a, b) => triSens * comparateurs[triActif](a, b));
+
+    const labelsTri = { dlc: 'DLC', nom: 'Nom', qte: 'Qté' };
+    document.getElementById('btnTri').textContent = labelsTri[triActif] + (triSens === 1 ? ' ↑' : ' ↓');
 
     // Compteurs
     const nb = { rouge: 0, orange: 0, jaune: 0, vert: 0 };
@@ -535,6 +690,11 @@
     document.getElementById('nbOrange').textContent = nb.orange;
     document.getElementById('nbJaune').textContent = nb.jaune;
     document.getElementById('nbVert').textContent = nb.vert;
+
+    // Résumé total / traités
+    const nbTraites = produits.filter(p => p.traite).length;
+    document.getElementById('statsResume').textContent =
+      `${produits.length} produit${produits.length > 1 ? 's' : ''} au total · ${nbTraites} traité${nbTraites > 1 ? 's' : ''}`;
 
     // Alerte ce mois
     const alerteMois = document.getElementById('alerteMois');
@@ -553,12 +713,14 @@
 
     // Filtrage
     const recherche = document.getElementById('inputRecherche').value.toLowerCase();
+    categorieActive = document.getElementById('selectCategorie').value;
     let affichage = sorted.filter(p => {
       const matchFil = filtreActif === 'tous' || p._statut === filtreActif;
+      const matchCat = !categorieActive || p.cat === categorieActive;
       const matchRech = !recherche ||
         p.nom.toLowerCase().includes(recherche) ||
         (p.ean && p.ean.includes(recherche));
-      return matchFil && matchRech;
+      return matchFil && matchCat && matchRech;
     });
 
     // Compteurs actifs
@@ -603,6 +765,7 @@
             p._statut === 'jaune' ? 'var(--jaune)' : 'var(--vert)'
           }; font-weight:600;">${getJoursRestants(p.dlc)}</div>
           <div class="produit-qte">📦 ${p.qte} unité${p.qte > 1 ? 's' : ''}</div>
+          ${p.cat ? `<div class="produit-cat">${CATEGORIES[p.cat] || '📦'} ${echapper(p.cat)}</div>` : ''}
           ${p.ean ? `<div class="produit-ean">🔖 ${p.ean}</div>` : ''}
           ${p.traite ? `<div class="produit-ean">✅ Traité</div>` : ''}
         </div>
@@ -627,6 +790,15 @@
     rendreListe();
   }
 
+  // ── TRI ──────────────────────────────────────────────────────────────
+  const SEQUENCE_TRI = [['dlc',1],['dlc',-1],['nom',1],['nom',-1],['qte',1],['qte',-1]];
+  function changerTri() {
+    let i = SEQUENCE_TRI.findIndex(([f, s]) => f === triActif && s === triSens);
+    i = (i + 1) % SEQUENCE_TRI.length;
+    [triActif, triSens] = SEQUENCE_TRI[i];
+    rendreListe();
+  }
+
   // ── MODAL ────────────────────────────────────────────────────────────
   function ouvrirModal(idx = -1) {
     editIndex = idx;
@@ -640,11 +812,13 @@
       document.getElementById('inputNom').value = p.nom;
       document.getElementById('inputDlc').value = p.dlc;
       document.getElementById('inputQte').value = p.qte;
+      document.getElementById('inputCategorie').value = p.cat || '';
     } else {
       document.getElementById('inputEan').value = '';
       document.getElementById('inputNom').value = '';
       document.getElementById('inputDlc').value = '';
       document.getElementById('inputQte').value = '';
+      document.getElementById('inputCategorie').value = '';
     }
     document.getElementById('scanResultat').style.display = 'none';
 
@@ -666,14 +840,17 @@
     const nom = document.getElementById('inputNom').value.trim();
     const dlc = document.getElementById('inputDlc').value;
     const qte = parseInt(document.getElementById('inputQte').value) || 0;
+    const cat = document.getElementById('inputCategorie').value;
 
     if (!nom) { alert('Veuillez saisir un nom de produit.'); return; }
     if (!dlc) { alert('Veuillez saisir une date de péremption.'); return; }
 
     if (editIndex >= 0) {
-      produits[editIndex] = { ...produits[editIndex], ean, nom, dlc, qte };
+      produits[editIndex] = { ...produits[editIndex], ean, nom, dlc, qte, cat };
+      ajouterHistorique('Modifié', nom);
     } else {
-      produits.push({ ean, nom, dlc, qte, traite: false });
+      produits.push({ ean, nom, dlc, qte, cat, traite: false });
+      ajouterHistorique('Ajouté', nom);
     }
 
     fermerModal();
@@ -684,14 +861,26 @@
   function editer(idx) { ouvrirModal(idx); }
 
   function supprimer(idx) {
-    if (confirm(`Supprimer "${produits[idx].nom}" ?`)) {
-      produits.splice(idx, 1);
+    const item = produits[idx];
+    if (!confirm(`Supprimer "${item.nom}" ?`)) return;
+
+    produits.splice(idx, 1);
+    ajouterHistorique('Supprimé', item.nom);
+    rendreListe();
+
+    dernierSupprime = { item, idx };
+    afficherToast(`"${item.nom}" supprimé.`, 'Annuler', () => {
+      if (!dernierSupprime) return;
+      produits.splice(dernierSupprime.idx, 0, dernierSupprime.item);
+      ajouterHistorique('Suppression annulée', dernierSupprime.item.nom);
+      dernierSupprime = null;
       rendreListe();
-    }
+    });
   }
 
   function basculerTraite(idx) {
     produits[idx].traite = !produits[idx].traite;
+    ajouterHistorique(produits[idx].traite ? 'Marqué traité' : 'Annulé (traité)', produits[idx].nom);
     rendreListe();
   }
 
@@ -700,16 +889,82 @@
     localStorage.setItem('dlc_surgeles', JSON.stringify(produits));
   }
 
+  // ── HISTORIQUE ───────────────────────────────────────────────────────
+  function ajouterHistorique(action, nom, detail = '') {
+    historique.unshift({ date: new Date().toISOString(), action, nom, detail });
+    if (historique.length > 200) historique = historique.slice(0, 200);
+    localStorage.setItem('dlc_surgeles_historique', JSON.stringify(historique));
+  }
+
+  function ouvrirHistorique() {
+    rendreHistorique();
+    document.getElementById('overlayHistorique').classList.add('open');
+  }
+  function fermerHistorique() {
+    document.getElementById('overlayHistorique').classList.remove('open');
+  }
+  function fermerSiDehorsHistorique(e) {
+    if (e.target === document.getElementById('overlayHistorique')) fermerHistorique();
+  }
+  function rendreHistorique() {
+    const el = document.getElementById('histListe');
+    if (historique.length === 0) {
+      el.innerHTML = `<div class="hist-vide">Aucune action enregistrée pour l'instant.</div>`;
+      return;
+    }
+    el.innerHTML = historique.map(h => {
+      const d = new Date(h.date);
+      const dateStr = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }) +
+        ' à ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      return `
+        <div class="hist-item">
+          <div class="hist-action">${echapper(h.action)} — ${echapper(h.nom)}</div>
+          <div class="hist-date">${dateStr}</div>
+        </div>`;
+    }).join('');
+  }
+
+  // ── TOAST (annulation) ───────────────────────────────────────────────
+  function afficherToast(texte, libelleBtn, callback) {
+    clearTimeout(toastTimer);
+    const toast = document.getElementById('toast');
+    document.getElementById('toastTexte').textContent = texte;
+    const btn = document.getElementById('toastBtn');
+    btn.textContent = libelleBtn;
+    window._toastCallback = callback;
+    toast.classList.add('visible');
+    toastTimer = setTimeout(() => {
+      toast.classList.remove('visible');
+      dernierSupprime = null;
+    }, 6000);
+  }
+  function actionToast() {
+    clearTimeout(toastTimer);
+    document.getElementById('toast').classList.remove('visible');
+    if (window._toastCallback) window._toastCallback();
+  }
+
+  // ── MENU (⋯) ─────────────────────────────────────────────────────────
+  function ouvrirMenu() {
+    document.getElementById('overlayMenu').classList.add('open');
+  }
+  function fermerMenu() {
+    document.getElementById('overlayMenu').classList.remove('open');
+  }
+  function fermerSiDehorsMenu(e) {
+    if (e.target === document.getElementById('overlayMenu')) fermerMenu();
+  }
+
   // ── EXPORT ───────────────────────────────────────────────────────────
   function exporterDonnees() {
     const sorted = [...produits]
       .map(p => ({ ...p, statut: getStatut(p.dlc) }))
       .sort((a, b) => a.dlc.localeCompare(b.dlc));
 
-    const lignes = ['Gencod,Nom du produit,DLC,Quantité,Statut,Traité'];
+    const lignes = ['Gencod,Nom du produit,DLC,Quantité,Statut,Traité,Catégorie'];
     sorted.forEach(p => {
       const statuts = { rouge: 'Expiré', orange: 'Ce mois', jaune: 'Mois prochain', vert: 'OK' };
-      lignes.push(`${p.ean || ''},\"${p.nom}\",${p.dlc},${p.qte},${statuts[p.statut]},${p.traite ? 'Oui' : 'Non'}`);
+      lignes.push(`${p.ean || ''},\"${p.nom}\",${p.dlc},${p.qte},${statuts[p.statut]},${p.traite ? 'Oui' : 'Non'},\"${p.cat || ''}\"`);
     });
 
     const csv = lignes.join('\n');
@@ -724,6 +979,76 @@
 
   function fermerInstall() {
     document.getElementById('installBanner').classList.add('hidden');
+  }
+
+  // ── RAPPORT PDF ──────────────────────────────────────────────────────
+  async function genererRapportPDF() {
+    const statutEl = document.getElementById('syncStatut');
+    statutEl.style.display = 'block';
+    statutEl.style.background = '#EFF6FF';
+    statutEl.style.color = '#1D4ED8';
+    statutEl.textContent = '⏳ Génération du rapport PDF…';
+
+    try {
+      await chargerScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    } catch (e) {
+      statutEl.style.background = '#FEE2E2';
+      statutEl.style.color = '#991B1B';
+      statutEl.textContent = '📡 Hors ligne — impossible de générer le PDF sans connexion.';
+      return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const margeG = 14;
+    let y = 18;
+
+    const expires = produits.filter(p => !p.traite && getStatut(p.dlc) === 'rouge')
+      .sort((a, b) => a.dlc.localeCompare(b.dlc));
+    const aSurveiller = produits.filter(p => !p.traite && (getStatut(p.dlc) === 'orange' || getStatut(p.dlc) === 'jaune'))
+      .sort((a, b) => a.dlc.localeCompare(b.dlc));
+
+    doc.setFontSize(16);
+    doc.text('Rapport DLC Surgelés', margeG, y); y += 7;
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text('Généré le ' + new Date().toLocaleString('fr-FR'), margeG, y); y += 10;
+    doc.setTextColor(0);
+
+    function nouvellePageSiBesoin() {
+      if (y > 280) { doc.addPage(); y = 18; }
+    }
+
+    function section(titre, liste, couleur) {
+      doc.setFontSize(13);
+      doc.setTextColor(couleur[0], couleur[1], couleur[2]);
+      doc.text(`${titre} (${liste.length})`, margeG, y); y += 7;
+      doc.setTextColor(0);
+      doc.setFontSize(10);
+      if (liste.length === 0) {
+        doc.setTextColor(120);
+        doc.text('Aucun produit.', margeG, y); y += 6;
+        doc.setTextColor(0);
+      } else {
+        liste.forEach(p => {
+          nouvellePageSiBesoin();
+          const ligne = `${p.nom}  —  qte ${p.qte}  —  DLC ${formatDlc(p.dlc)}  —  ${getJoursRestants(p.dlc)}${p.cat ? '  —  ' + p.cat : ''}`;
+          doc.text(ligne, margeG, y);
+          y += 6;
+        });
+      }
+      y += 6;
+      nouvellePageSiBesoin();
+    }
+
+    section('Produits expires', expires, [220, 38, 38]);
+    section('A surveiller (ce mois / mois prochain)', aSurveiller, [234, 88, 12]);
+
+    doc.save(`Rapport_DLC_Surgeles_${new Date().toISOString().slice(0,10)}.pdf`);
+
+    statutEl.style.background = '#DCFCE7';
+    statutEl.style.color = '#166534';
+    statutEl.textContent = '✅ Rapport PDF généré.';
   }
 
   // ── ENVOI VERS GOOGLE SHEETS ─────────────────────────────────────────
@@ -763,7 +1088,8 @@
         statut: getStatut(p.dlc),
         statutLabel: labels[getStatut(p.dlc)],
         joursRestants: getJoursRestants(p.dlc),
-        traite: !!p.traite
+        traite: !!p.traite,
+        cat: p.cat || ''
       }))
     };
 
@@ -784,7 +1110,8 @@
     } catch (e) {
       statutEl.style.background = '#FEE2E2';
       statutEl.style.color = '#991B1B';
-      statutEl.textContent = '❌ Échec de l\'envoi — vérifie l\'URL du script (appui long sur 📊 Sheets pour la modifier).';
+      statutEl.innerHTML = '❌ Échec de l\'envoi — vérifie l\'URL du script (appui long sur 📊 Sheets pour la modifier).' +
+        '<button class="btn-retry" onclick="envoyerVersSheets()">↻ Réessayer</button>';
     }
   }
 
@@ -824,7 +1151,7 @@
         return;
       }
 
-      produits = distants.map(p => ({ ean: p.ean || '', nom: p.nom, dlc: p.dlc, qte: p.qte, traite: !!p.traite }));
+      produits = distants.map(p => ({ ean: p.ean || '', nom: p.nom, dlc: p.dlc, qte: p.qte, traite: !!p.traite, cat: p.cat || '' }));
       sauverDonnees();
       rendreListe();
 
@@ -834,7 +1161,8 @@
     } catch (e) {
       statutEl.style.background = '#FEE2E2';
       statutEl.style.color = '#991B1B';
-      statutEl.textContent = '❌ Échec de l\'import — vérifie l\'URL du script (appui long sur 📊 Sheets pour la modifier).';
+      statutEl.innerHTML = '❌ Échec de l\'import — vérifie l\'URL du script (appui long sur 📊 Sheets pour la modifier).' +
+        '<button class="btn-retry" onclick="importerDepuisSheets()">↻ Réessayer</button>';
     }
   }
 
@@ -986,11 +1314,11 @@
       const dlcProchain = new Date(auj.getFullYear(), auj.getMonth() + 1, 10).toISOString().slice(0,10);
       const dlcOk = new Date(auj.getFullYear(), auj.getMonth() + 3, 5).toISOString().slice(0,10);
       produits = [
-        { nom: "Haricots verts fins 1kg", dlc: dlcCeMois, qte: 18 },
-        { nom: "Poulet rôti entier 1,5kg", dlc: dlcExpire, qte: 4 },
-        { nom: "Poisson pané x8", dlc: dlcProchain, qte: 24 },
-        { nom: "Épinards hachés 750g", dlc: dlcOk, qte: 36 },
-        { nom: "Pizza margherita", dlc: dlcCeMois, qte: 12 },
+        { nom: "Haricots verts fins 1kg", dlc: dlcCeMois, qte: 18, cat: 'Légumes' },
+        { nom: "Poulet rôti entier 1,5kg", dlc: dlcExpire, qte: 4, cat: 'Viande' },
+        { nom: "Poisson pané x8", dlc: dlcProchain, qte: 24, cat: 'Poisson / Fruits de mer' },
+        { nom: "Épinards hachés 750g", dlc: dlcOk, qte: 36, cat: 'Légumes' },
+        { nom: "Pizza margherita", dlc: dlcCeMois, qte: 12, cat: 'Plats préparés' },
       ];
       rendreListe();
     }
