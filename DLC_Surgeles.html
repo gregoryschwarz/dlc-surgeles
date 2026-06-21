@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="DLC Surgelés">
+  <meta name="theme-color" content="#0EA5E9">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" href="./icon-192.png">
+  <link rel="apple-touch-icon" href="./icon-192.png">
+  <title>DLC Surgelés</title>
+  <style>
+    :root {
+      --bleu: #0EA5E9;
+      --bleu-fonce: #0369A1;
+      --rouge: #EF4444;
+      --rouge-clair: #FEE2E2;
+      --orange: #F97316;
+      --orange-clair: #FFF7ED;
+      --jaune: #EAB308;
+      --jaune-clair: #FEFCE8;
+      --vert: #22C55E;
+      --vert-clair: #DCFCE7;
+      --gris: #F1F5F9;
+      --gris-bord: #E2E8F0;
+      --texte: #1E293B;
+      --texte-doux: #64748B;
+      --blanc: #FFFFFF;
+      --ombre: 0 2px 12px rgba(0,0,0,0.08);
+      --rayon: 16px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #EFF6FF;
+      color: var(--texte);
+      min-height: 100vh;
+      padding-bottom: 100px;
+    }
+
+    /* HEADER */
+    .header {
+      background: linear-gradient(135deg, var(--bleu-fonce), var(--bleu));
+      color: white;
+      padding: 54px 20px 20px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--ombre);
+    }
+    .header-top { display: flex; justify-content: space-between; align-items: center; }
+    .header h1 { font-size: 22px; font-weight: 700; }
+    .header h1 span { font-size: 26px; }
+    .date-auj { font-size: 13px; opacity: 0.85; margin-top: 2px; }
+    .btn-header { background: rgba(255,255,255,0.2); border: none; color: white; border-radius: 10px; padding: 8px 14px; font-size: 14px; font-weight: 600; cursor: pointer; }
+
+    /* ALERTE CE MOIS */
+    .alerte-mois {
+      margin: 16px;
+      background: var(--orange);
+      color: white;
+      border-radius: var(--rayon);
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 4px 12px rgba(249,115,22,0.35);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.88} }
+    .alerte-mois .ic { font-size: 28px; }
+    .alerte-mois .txt strong { display: block; font-size: 15px; font-weight: 700; }
+    .alerte-mois .txt span { font-size: 13px; opacity: 0.9; }
+    .alerte-mois.hidden { display: none; }
+
+    /* COMPTEURS */
+    .compteurs {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      padding: 0 16px;
+      margin-bottom: 16px;
+    }
+    .compteur {
+      background: white;
+      border-radius: 14px;
+      padding: 12px 8px;
+      text-align: center;
+      box-shadow: var(--ombre);
+      cursor: pointer;
+      transition: transform 0.15s;
+      border: 2px solid transparent;
+    }
+    .compteur:active { transform: scale(0.96); }
+    .compteur.actif { border-color: var(--bleu); }
+    .compteur .nb { font-size: 26px; font-weight: 800; line-height: 1; }
+    .compteur .lb { font-size: 10px; font-weight: 600; color: var(--texte-doux); margin-top: 3px; text-transform: uppercase; letter-spacing: 0.3px; }
+    .compteur.rouge .nb { color: var(--rouge); }
+    .compteur.orange .nb { color: var(--orange); }
+    .compteur.jaune .nb { color: var(--jaune); }
+    .compteur.vert .nb { color: var(--vert); }
+
+    /* BARRE RECHERCHE */
+    .barre {
+      padding: 0 16px 12px;
+      display: flex;
+      gap: 10px;
+    }
+    .recherche {
+      flex: 1;
+      background: white;
+      border: 1.5px solid var(--gris-bord);
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 15px;
+      color: var(--texte);
+      outline: none;
+    }
+    .recherche:focus { border-color: var(--bleu); }
+    .btn-tri {
+      background: white;
+      border: 1.5px solid var(--gris-bord);
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 14px;
+      color: var(--texte-doux);
+      cursor: pointer;
+    }
+
+    /* LISTE PRODUITS */
+    .liste { padding: 0 16px; display: flex; flex-direction: column; gap: 10px; }
+
+    .produit {
+      background: white;
+      border-radius: var(--rayon);
+      padding: 14px 16px;
+      box-shadow: var(--ombre);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      border-left: 5px solid transparent;
+      transition: transform 0.15s;
+      position: relative;
+    }
+    .produit:active { transform: scale(0.98); }
+    .produit.rouge { border-left-color: var(--rouge); background: linear-gradient(to right, #FFF5F5, white); }
+    .produit.orange { border-left-color: var(--orange); background: linear-gradient(to right, #FFFAF5, white); }
+    .produit.jaune { border-left-color: var(--jaune); background: linear-gradient(to right, #FEFFF5, white); }
+    .produit.vert { border-left-color: var(--vert); }
+
+    .badge-statut {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+    .rouge .badge-statut { background: var(--rouge-clair); }
+    .orange .badge-statut { background: var(--orange-clair); }
+    .jaune .badge-statut { background: var(--jaune-clair); }
+    .vert .badge-statut { background: var(--vert-clair); }
+
+    .produit-info { flex: 1; min-width: 0; }
+    .produit-nom { font-size: 15px; font-weight: 700; color: var(--texte); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .produit-dlc { font-size: 13px; color: var(--texte-doux); margin-top: 2px; }
+    .produit-dlc strong { font-weight: 700; }
+    .produit-qte { font-size: 12px; background: var(--gris); color: var(--texte-doux); border-radius: 6px; padding: 2px 8px; margin-top: 4px; display: inline-block; }
+
+    .produit-actions { display: flex; gap: 8px; flex-shrink: 0; }
+    .btn-action {
+      width: 36px; height: 36px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .btn-edit { background: var(--gris); color: var(--texte-doux); }
+    .btn-del { background: var(--rouge-clair); color: var(--rouge); }
+
+    .vide {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--texte-doux);
+    }
+    .vide .ic { font-size: 56px; margin-bottom: 12px; }
+    .vide p { font-size: 15px; }
+
+    /* BOUTON AJOUTER */
+    .btn-ajouter {
+      position: fixed;
+      bottom: 24px;
+      right: 20px;
+      width: 62px; height: 62px;
+      background: linear-gradient(135deg, var(--bleu-fonce), var(--bleu));
+      color: white;
+      border: none;
+      border-radius: 50%;
+      font-size: 32px;
+      box-shadow: 0 6px 20px rgba(14,165,233,0.5);
+      cursor: pointer;
+      z-index: 200;
+      display: flex; align-items: center; justify-content: center;
+      transition: transform 0.15s;
+    }
+    .btn-ajouter:active { transform: scale(0.92); }
+
+    /* MODAL */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 300;
+      display: flex; align-items: flex-end;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.25s;
+    }
+    .overlay.open { opacity: 1; pointer-events: all; }
+
+    .modal {
+      background: white;
+      border-radius: 24px 24px 0 0;
+      padding: 8px 0 40px;
+      width: 100%;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .overlay.open .modal { transform: translateY(0); }
+
+    .modal-poignee {
+      width: 40px; height: 4px;
+      background: var(--gris-bord);
+      border-radius: 2px;
+      margin: 12px auto 20px;
+    }
+    .modal-titre {
+      font-size: 18px; font-weight: 800;
+      padding: 0 20px 16px;
+      border-bottom: 1px solid var(--gris-bord);
+      margin-bottom: 20px;
+    }
+
+    .champ { padding: 0 20px; margin-bottom: 16px; }
+    .champ label { display: block; font-size: 12px; font-weight: 700; color: var(--texte-doux); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .champ input, .champ select {
+      width: 100%;
+      background: var(--gris);
+      border: 1.5px solid transparent;
+      border-radius: 12px;
+      padding: 13px 14px;
+      font-size: 16px;
+      color: var(--texte);
+      outline: none;
+      -webkit-appearance: none;
+    }
+    .champ input:focus, .champ select:focus { border-color: var(--bleu); background: white; }
+
+    .modal-btns { padding: 4px 20px 0; display: flex; gap: 12px; }
+    .btn-annuler {
+      flex: 1; padding: 14px;
+      background: var(--gris);
+      border: none; border-radius: 14px;
+      font-size: 15px; font-weight: 700;
+      color: var(--texte-doux); cursor: pointer;
+    }
+    .btn-sauver {
+      flex: 2; padding: 14px;
+      background: linear-gradient(135deg, var(--bleu-fonce), var(--bleu));
+      border: none; border-radius: 14px;
+      font-size: 15px; font-weight: 700;
+      color: white; cursor: pointer;
+      box-shadow: 0 4px 12px rgba(14,165,233,0.4);
+    }
+
+    /* INSTALL BANNER */
+    .install-banner {
+      margin: 0 16px 16px;
+      background: linear-gradient(135deg, #6366F1, #8B5CF6);
+      color: white;
+      border-radius: var(--rayon);
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .install-banner .ic { font-size: 26px; flex-shrink: 0; }
+    .install-banner .txt strong { display: block; font-size: 14px; font-weight: 700; }
+    .install-banner .txt span { font-size: 12px; opacity: 0.9; }
+    .install-banner button {
+      margin-left: auto; flex-shrink: 0;
+      background: white; color: #6366F1;
+      border: none; border-radius: 8px;
+      padding: 6px 12px; font-size: 12px; font-weight: 700;
+      cursor: pointer;
+    }
+    .install-banner.hidden { display: none; }
+
+    .section-titre {
+      padding: 0 16px 8px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--texte-doux);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* CHAMP AVEC BOUTON SCAN */
+    .champ-scan { display: flex; gap: 8px; align-items: flex-start; }
+    .champ-scan input { flex: 1; }
+    .btn-scan {
+      background: linear-gradient(135deg, #6366F1, #8B5CF6);
+      color: white; border: none;
+      border-radius: 12px;
+      padding: 13px 14px;
+      font-size: 20px;
+      cursor: pointer;
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* RÉSULTAT SCAN */
+    .scan-resultat {
+      margin: -8px 20px 12px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      background: var(--gris);
+      color: var(--texte-doux);
+      display: none;
+    }
+
+    .scanner-tip {
+      color: rgba(255,255,255,0.8);
+      font-size: 14px; margin-top: 24px;
+      text-align: center; padding: 0 20px;
+    }
+
+    /* EAN sur fiche produit */
+    .produit-ean { font-size: 11px; color: var(--texte-doux); margin-top: 3px; font-family: monospace; letter-spacing: 0.5px; }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-top">
+    <div>
+      <h1><span>🧊</span> DLC Surgelés</h1>
+      <div class="date-auj" id="dateAuj"></div>
+    </div>
+    <div style="display:flex; gap:8px;">
+      <button class="btn-header" onclick="envoyerVersSheets()" id="btnSheets">📊 Sheets</button>
+      <button class="btn-header" onclick="exporterDonnees()">📤 Export</button>
+    </div>
+  </div>
+</div>
+
+<!-- STATUT SYNC SHEETS -->
+<div class="scan-resultat" id="syncStatut" style="margin:0 16px 16px; display:none;"></div>
+
+<!-- BANNIÈRE INSTALLATION -->
+<div class="install-banner hidden" id="installBanner">
+  <div class="ic">📲</div>
+  <div class="txt">
+    <strong>Installer sur l'écran d'accueil</strong>
+    <span>Safari → Partager → Sur l'écran d'accueil</span>
+  </div>
+  <button onclick="fermerInstall()">✕</button>
+</div>
+
+<!-- ALERTE CE MOIS -->
+<div class="alerte-mois hidden" id="alerteMois">
+  <div class="ic">⚠️</div>
+  <div class="txt">
+    <strong id="alerteMoisTitre"></strong>
+    <span id="alerteMoisDetail"></span>
+  </div>
+</div>
+
+<!-- COMPTEURS -->
+<div class="compteurs">
+  <div class="compteur rouge" onclick="filtrer('rouge')" id="cptRouge">
+    <div class="nb" id="nbRouge">0</div>
+    <div class="lb">Expirés</div>
+  </div>
+  <div class="compteur orange" onclick="filtrer('orange')" id="cptOrange">
+    <div class="nb" id="nbOrange">0</div>
+    <div class="lb">Ce mois</div>
+  </div>
+  <div class="compteur jaune" onclick="filtrer('jaune')" id="cptJaune">
+    <div class="nb" id="nbJaune">0</div>
+    <div class="lb">Prochain</div>
+  </div>
+  <div class="compteur vert" onclick="filtrer('vert')" id="cptVert">
+    <div class="nb" id="nbVert">0</div>
+    <div class="lb">OK</div>
+  </div>
+</div>
+
+<!-- BARRE RECHERCHE -->
+<div class="barre">
+  <input class="recherche" type="search" placeholder="🔍 Rechercher un produit..." id="inputRecherche" oninput="rendreListe()">
+</div>
+
+<!-- SECTION TITRE -->
+<div class="section-titre" id="sectionTitre">Tous les produits</div>
+
+<!-- LISTE -->
+<div class="liste" id="liste"></div>
+
+<!-- BOUTON AJOUTER -->
+<button class="btn-ajouter" onclick="ouvrirModal()">+</button>
+
+<!-- INPUT CAMÉRA (invisible) -->
+<input type="file" accept="image/*" capture="environment" id="cameraInput" style="display:none" onchange="traiterPhoto(this)">
+<div id="tempReader" style="display:none"></div>
+
+<!-- MODAL -->
+<div class="overlay" id="overlay" onclick="fermerSiDehors(event)">
+  <div class="modal">
+    <div class="modal-poignee"></div>
+    <div class="modal-titre" id="modalTitre">Ajouter un produit</div>
+
+    <div class="champ">
+      <label>Code-barres (Gencod)</label>
+      <div class="champ-scan">
+        <input type="number" id="inputEan" placeholder="Ex : 3017620422003" oninput="rechercherParEan()" autocomplete="off">
+        <button class="btn-scan" onclick="lancerScanner()" title="Scanner">📷</button>
+      </div>
+    </div>
+    <div class="scan-resultat" id="scanResultat"></div>
+
+    <div class="champ">
+      <label>Nom du produit</label>
+      <input type="text" id="inputNom" placeholder="Ex : Haricots verts 1kg" autocomplete="off">
+    </div>
+
+    <div class="champ">
+      <label>Date limite de consommation (DLC)</label>
+      <input type="date" id="inputDlc">
+    </div>
+
+    <div class="champ">
+      <label>Quantité en stock</label>
+      <input type="number" id="inputQte" placeholder="Ex : 24" min="0">
+    </div>
+
+    <div class="modal-btns">
+      <button class="btn-annuler" onclick="fermerModal()">Annuler</button>
+      <button class="btn-sauver" onclick="sauvegarder()">💾 Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── DONNÉES ──────────────────────────────────────────────────────────
+  let produits = JSON.parse(localStorage.getItem('dlc_surgeles') || '[]');
+  let filtreActif = 'tous';
+  let editIndex = -1;
+
+  // ── INIT ─────────────────────────────────────────────────────────────
+  function init() {
+    // Date du jour
+    const auj = new Date();
+    const opts = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+    document.getElementById('dateAuj').textContent = auj.toLocaleDateString('fr-FR', opts);
+
+    // Bannière installation iOS
+    const estIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const estInstalle = window.navigator.standalone;
+    if (estIOS && !estInstalle) {
+      document.getElementById('installBanner').classList.remove('hidden');
+    }
+
+    rendreListe();
+  }
+
+  // ── STATUT DLC ───────────────────────────────────────────────────────
+  function getStatut(dlcStr) {
+    const auj = new Date(); auj.setHours(0,0,0,0);
+    const dlc = new Date(dlcStr + 'T00:00:00');
+    const moisAuj = auj.getFullYear() * 12 + auj.getMonth();
+    const moisDlc = dlc.getFullYear() * 12 + dlc.getMonth();
+    const diff = moisDlc - moisAuj;
+    if (dlc < auj)    return 'rouge';
+    if (diff === 0)   return 'orange';
+    if (diff === 1)   return 'jaune';
+    return 'vert';
+  }
+
+  function getEmoji(statut) {
+    return { rouge: '❌', orange: '⚠️', jaune: '⏳', vert: '✅' }[statut];
+  }
+
+  function getJoursRestants(dlcStr) {
+    const auj = new Date(); auj.setHours(0,0,0,0);
+    const dlc = new Date(dlcStr + 'T00:00:00');
+    const diff = Math.round((dlc - auj) / 86400000);
+    if (diff < 0) return `Expiré il y a ${Math.abs(diff)} jour${Math.abs(diff) > 1 ? 's' : ''}`;
+    if (diff === 0) return "Expire aujourd'hui !";
+    if (diff === 1) return "Expire demain !";
+    return `${diff} jours restants`;
+  }
+
+  function formatDlc(dlcStr) {
+    const d = new Date(dlcStr + 'T00:00:00');
+    return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+  }
+
+  // ── RENDU LISTE ──────────────────────────────────────────────────────
+  function rendreListe() {
+    sauverDonnees();
+
+    // Tri par DLC
+    const sorted = [...produits]
+      .map((p, i) => ({ ...p, _idx: i, _statut: getStatut(p.dlc) }))
+      .sort((a, b) => a.dlc.localeCompare(b.dlc));
+
+    // Compteurs
+    const nb = { rouge: 0, orange: 0, jaune: 0, vert: 0 };
+    sorted.forEach(p => nb[p._statut]++);
+    document.getElementById('nbRouge').textContent = nb.rouge;
+    document.getElementById('nbOrange').textContent = nb.orange;
+    document.getElementById('nbJaune').textContent = nb.jaune;
+    document.getElementById('nbVert').textContent = nb.vert;
+
+    // Alerte ce mois
+    const alerteMois = document.getElementById('alerteMois');
+    if (nb.orange > 0 || nb.rouge > 0) {
+      alerteMois.classList.remove('hidden');
+      const total = nb.orange + nb.rouge;
+      document.getElementById('alerteMoisTitre').textContent =
+        `${total} produit${total > 1 ? 's' : ''} à gérer en urgence !`;
+      const details = [];
+      if (nb.rouge > 0) details.push(`${nb.rouge} expiré${nb.rouge > 1 ? 's' : ''}`);
+      if (nb.orange > 0) details.push(`${nb.orange} expirant ce mois`);
+      document.getElementById('alerteMoisDetail').textContent = details.join(' · ');
+    } else {
+      alerteMois.classList.add('hidden');
+    }
+
+    // Filtrage
+    const recherche = document.getElementById('inputRecherche').value.toLowerCase();
+    let affichage = sorted.filter(p => {
+      const matchFil = filtreActif === 'tous' || p._statut === filtreActif;
+      const matchRech = !recherche ||
+        p.nom.toLowerCase().includes(recherche) ||
+        (p.ean && p.ean.includes(recherche));
+      return matchFil && matchRech;
+    });
+
+    // Compteurs actifs
+    ['rouge','orange','jaune','vert'].forEach(s => {
+      document.getElementById('cpt' + s.charAt(0).toUpperCase() + s.slice(1))
+        .classList.toggle('actif', filtreActif === s);
+    });
+
+    // Titre section
+    const titres = {
+      tous: 'Tous les produits',
+      rouge: '❌ Produits expirés',
+      orange: '⚠️ Expirant ce mois',
+      jaune: '⏳ Mois prochain',
+      vert: '✅ Produits OK'
+    };
+    document.getElementById('sectionTitre').textContent =
+      titres[filtreActif] + (recherche ? ` — "${recherche}"` : '');
+
+    // Rendu HTML
+    const liste = document.getElementById('liste');
+    if (affichage.length === 0) {
+      liste.innerHTML = `
+        <div class="vide">
+          <div class="ic">${produits.length === 0 ? '🧊' : '🔍'}</div>
+          <p>${produits.length === 0
+            ? 'Aucun produit enregistré.<br>Appuyez sur <strong>+</strong> pour commencer.'
+            : 'Aucun produit dans cette catégorie.'}</p>
+        </div>`;
+      return;
+    }
+
+    liste.innerHTML = affichage.map(p => `
+      <div class="produit ${p._statut}">
+        <div class="badge-statut">${getEmoji(p._statut)}</div>
+        <div class="produit-info">
+          <div class="produit-nom">${echapper(p.nom)}</div>
+          <div class="produit-dlc">DLC : <strong>${formatDlc(p.dlc)}</strong></div>
+          <div class="produit-dlc" style="color:${
+            p._statut === 'rouge' ? 'var(--rouge)' :
+            p._statut === 'orange' ? 'var(--orange)' :
+            p._statut === 'jaune' ? 'var(--jaune)' : 'var(--vert)'
+          }; font-weight:600;">${getJoursRestants(p.dlc)}</div>
+          <div class="produit-qte">📦 ${p.qte} unité${p.qte > 1 ? 's' : ''}</div>
+          ${p.ean ? `<div class="produit-ean">🔖 ${p.ean}</div>` : ''}
+        </div>
+        <div class="produit-actions">
+          <button class="btn-action btn-edit" onclick="editer(${p._idx})">✏️</button>
+          <button class="btn-action btn-del" onclick="supprimer(${p._idx})">🗑</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function echapper(str) {
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  // ── FILTRE ───────────────────────────────────────────────────────────
+  function filtrer(statut) {
+    filtreActif = filtreActif === statut ? 'tous' : statut;
+    rendreListe();
+  }
+
+  // ── MODAL ────────────────────────────────────────────────────────────
+  function ouvrirModal(idx = -1) {
+    editIndex = idx;
+    const modal = document.getElementById('overlay');
+    document.getElementById('modalTitre').textContent =
+      idx === -1 ? 'Ajouter un produit' : 'Modifier le produit';
+
+    if (idx >= 0) {
+      const p = produits[idx];
+      document.getElementById('inputEan').value = p.ean || '';
+      document.getElementById('inputNom').value = p.nom;
+      document.getElementById('inputDlc').value = p.dlc;
+      document.getElementById('inputQte').value = p.qte;
+    } else {
+      document.getElementById('inputEan').value = '';
+      document.getElementById('inputNom').value = '';
+      document.getElementById('inputDlc').value = '';
+      document.getElementById('inputQte').value = '';
+    }
+    document.getElementById('scanResultat').style.display = 'none';
+
+    modal.classList.add('open');
+    setTimeout(() => document.getElementById('inputNom').focus(), 400);
+  }
+
+  function fermerModal() {
+    document.getElementById('overlay').classList.remove('open');
+    editIndex = -1;
+  }
+
+  function fermerSiDehors(e) {
+    if (e.target === document.getElementById('overlay')) fermerModal();
+  }
+
+  function sauvegarder() {
+    const ean = document.getElementById('inputEan').value.trim();
+    const nom = document.getElementById('inputNom').value.trim();
+    const dlc = document.getElementById('inputDlc').value;
+    const qte = parseInt(document.getElementById('inputQte').value) || 0;
+
+    if (!nom) { alert('Veuillez saisir un nom de produit.'); return; }
+    if (!dlc) { alert('Veuillez saisir une date de péremption.'); return; }
+
+    if (editIndex >= 0) {
+      produits[editIndex] = { ean, nom, dlc, qte };
+    } else {
+      produits.push({ ean, nom, dlc, qte });
+    }
+
+    fermerModal();
+    rendreListe();
+  }
+
+  // ── ACTIONS ──────────────────────────────────────────────────────────
+  function editer(idx) { ouvrirModal(idx); }
+
+  function supprimer(idx) {
+    if (confirm(`Supprimer "${produits[idx].nom}" ?`)) {
+      produits.splice(idx, 1);
+      rendreListe();
+    }
+  }
+
+  // ── SAUVEGARDE ───────────────────────────────────────────────────────
+  function sauverDonnees() {
+    localStorage.setItem('dlc_surgeles', JSON.stringify(produits));
+  }
+
+  // ── EXPORT ───────────────────────────────────────────────────────────
+  function exporterDonnees() {
+    const sorted = [...produits]
+      .map(p => ({ ...p, statut: getStatut(p.dlc) }))
+      .sort((a, b) => a.dlc.localeCompare(b.dlc));
+
+    const lignes = ['Gencod,Nom du produit,DLC,Quantité,Statut'];
+    sorted.forEach(p => {
+      const statuts = { rouge: 'Expiré', orange: 'Ce mois', jaune: 'Mois prochain', vert: 'OK' };
+      lignes.push(`${p.ean || ''},\"${p.nom}\",${p.dlc},${p.qte},${statuts[p.statut]}`);
+    });
+
+    const csv = lignes.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `DLC_Surgeles_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function fermerInstall() {
+    document.getElementById('installBanner').classList.add('hidden');
+  }
+
+  // ── ENVOI VERS GOOGLE SHEETS ─────────────────────────────────────────
+  function getUrlSheets() {
+    return localStorage.getItem('dlc_surgeles_url_sheets') || '';
+  }
+
+  function demanderUrlSheets() {
+    const actuelle = getUrlSheets();
+    const url = prompt('Colle ici l\'URL de ton Apps Script déployé (se termine par /exec) :', actuelle);
+    if (url === null) return null;
+    const propre = url.trim();
+    if (propre) localStorage.setItem('dlc_surgeles_url_sheets', propre);
+    return propre;
+  }
+
+  async function envoyerVersSheets() {
+    let url = getUrlSheets();
+    if (!url) {
+      url = demanderUrlSheets();
+      if (!url) return;
+    }
+
+    const statutEl = document.getElementById('syncStatut');
+    statutEl.style.display = 'block';
+    statutEl.style.background = '#EFF6FF';
+    statutEl.style.color = '#1D4ED8';
+    statutEl.textContent = '⏳ Envoi vers Google Sheets…';
+
+    const labels = { rouge: 'Expiré', orange: 'Ce mois', jaune: 'Mois prochain', vert: 'OK' };
+    const payload = {
+      produits: produits.map(p => ({
+        ean: p.ean || '',
+        nom: p.nom,
+        dlc: p.dlc,
+        qte: p.qte,
+        statut: getStatut(p.dlc),
+        statutLabel: labels[getStatut(p.dlc)],
+        joursRestants: getJoursRestants(p.dlc)
+      }))
+    };
+
+    try {
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+      });
+      const data = await resp.json();
+      if (data.ok) {
+        statutEl.style.background = '#DCFCE7';
+        statutEl.style.color = '#166534';
+        statutEl.textContent = `✅ ${data.count} produit${data.count > 1 ? 's' : ''} envoyé${data.count > 1 ? 's' : ''} vers Google Sheets.`;
+      } else {
+        throw new Error(data.error || 'Erreur inconnue');
+      }
+    } catch (e) {
+      statutEl.style.background = '#FEE2E2';
+      statutEl.style.color = '#991B1B';
+      statutEl.textContent = '❌ Échec de l\'envoi — vérifie l\'URL du script (appui long sur 📊 Sheets pour la modifier).';
+    }
+  }
+
+  // Appui long sur le bouton Sheets pour reconfigurer l'URL
+  (function initBoutonSheets() {
+    const btn = document.getElementById('btnSheets');
+    if (!btn) return;
+    let timer = null;
+    let declenche = false;
+    const lancerLong = () => { declenche = false; timer = setTimeout(() => { declenche = true; demanderUrlSheets(); }, 600); };
+    const annulerLong = () => { clearTimeout(timer); };
+    btn.addEventListener('mousedown', lancerLong);
+    btn.addEventListener('touchstart', lancerLong);
+    ['mouseup','mouseleave','touchend','touchcancel'].forEach(ev => btn.addEventListener(ev, annulerLong));
+    btn.addEventListener('click', (e) => { if (declenche) e.stopImmediatePropagation(); });
+  })();
+
+  // ── SCANNER GENCOD (photo, compatible iOS Safari HTTP) ───────────────
+  function chargerScript(url) {
+    return new Promise((resolve, reject) => {
+      if (document.querySelector(`script[src="${url}"]`)) { resolve(); return; }
+      const s = document.createElement('script');
+      s.src = url; s.onload = resolve; s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+
+  async function lancerScanner() {
+    // Déclenche l'appareil photo natif iOS
+    document.getElementById('cameraInput').value = '';
+    document.getElementById('cameraInput').click();
+  }
+
+  async function traiterPhoto(input) {
+    if (!input.files || !input.files[0]) return;
+    const el = document.getElementById('scanResultat');
+    el.style.display = 'block';
+    el.style.background = '#EFF6FF';
+    el.style.color = '#1D4ED8';
+    el.textContent = '⏳ Analyse du code-barres…';
+
+    try {
+      await chargerScript('https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js');
+    } catch(e) {
+      el.style.background = '#FEE2E2'; el.style.color = '#991B1B';
+      el.textContent = '📡 Hors ligne — saisissez le code manuellement.';
+      document.getElementById('inputEan').focus(); return;
+    }
+
+    // Redimensionner l'image pour accélérer la détection
+    const file = input.files[0];
+    const imgSrc = await redimensionnerImage(file, 1200);
+
+    Quagga.decodeSingle({
+      decoder: {
+        readers: ['ean_reader', 'ean_8_reader', 'code_128_reader', 'upc_reader', 'upc_e_reader']
+      },
+      locate: true,
+      numOfWorkers: 0,
+      inputStream: { size: 1200 },
+      src: imgSrc
+    }, function(result) {
+      if (result && result.codeResult && result.codeResult.code) {
+        el.style.display = 'none';
+        traiterCode(result.codeResult.code);
+      } else {
+        el.style.background = '#FFF7ED'; el.style.color = '#92400E';
+        el.textContent = '⚠️ Non détecté — reprends la photo : code centré, bien éclairé, à plat.';
+      }
+    });
+  }
+
+  function redimensionnerImage(file, maxW) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        const scale = Math.min(1, maxW / img.width);
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(url);
+        resolve(canvas.toDataURL('image/jpeg', 0.9));
+      };
+      img.src = url;
+    });
+  }
+
+  async function traiterCode(ean) {
+    document.getElementById('inputEan').value = ean;
+    const el = document.getElementById('scanResultat');
+    el.style.display = 'block';
+    el.style.background = '#EFF6FF';
+    el.style.color = '#1D4ED8';
+    el.textContent = '🔍 Recherche du produit…';
+
+    try {
+      const resp = await fetch(`https://world.openfoodfacts.org/api/v0/product/${ean}.json`, { signal: AbortSignal.timeout(5000) });
+      const data = await resp.json();
+      if (data.status === 1 && data.product) {
+        const nom = data.product.product_name_fr || data.product.product_name || '';
+        if (nom) {
+          document.getElementById('inputNom').value = nom;
+          el.style.background = '#DCFCE7';
+          el.style.color = '#166534';
+          el.textContent = `✅ Produit trouvé : ${nom}`;
+        } else {
+          el.style.background = '#FFF7ED';
+          el.style.color = '#92400E';
+          el.textContent = '⚠️ Code scanné mais nom inconnu — saisissez le nom manuellement.';
+          document.getElementById('inputNom').focus();
+        }
+      } else {
+        el.style.background = '#FFF7ED';
+        el.style.color = '#92400E';
+        el.textContent = '⚠️ Produit non trouvé dans la base — saisissez le nom manuellement.';
+        document.getElementById('inputNom').focus();
+      }
+    } catch(e) {
+      el.style.background = '#F1F5F9';
+      el.style.color = '#475569';
+      el.textContent = '📡 Hors ligne — code enregistré, saisissez le nom manuellement.';
+      document.getElementById('inputNom').focus();
+    }
+  }
+
+  // Recherche manuelle si l'utilisateur tape le code à la main
+  let rechercheEanTimer = null;
+  function rechercherParEan() {
+    clearTimeout(rechercheEanTimer);
+    const ean = document.getElementById('inputEan').value.trim();
+    if (ean.length >= 8) {
+      rechercheEanTimer = setTimeout(() => traiterCode(ean), 800);
+    }
+  }
+
+  // ── SERVICE WORKER (offline) ─────────────────────────────────────────
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
+
+  // ── DONNÉES DE DÉMONSTRATION ─────────────────────────────────────────
+  function chargerDemo() {
+    if (produits.length === 0) {
+      const auj = new Date();
+      const dlcCeMois = new Date(auj.getFullYear(), auj.getMonth(), 15).toISOString().slice(0,10);
+      const dlcExpire = new Date(auj.getFullYear(), auj.getMonth() - 1, 20).toISOString().slice(0,10);
+      const dlcProchain = new Date(auj.getFullYear(), auj.getMonth() + 1, 10).toISOString().slice(0,10);
+      const dlcOk = new Date(auj.getFullYear(), auj.getMonth() + 3, 5).toISOString().slice(0,10);
+      produits = [
+        { nom: "Haricots verts fins 1kg", dlc: dlcCeMois, qte: 18 },
+        { nom: "Poulet rôti entier 1,5kg", dlc: dlcExpire, qte: 4 },
+        { nom: "Poisson pané x8", dlc: dlcProchain, qte: 24 },
+        { nom: "Épinards hachés 750g", dlc: dlcOk, qte: 36 },
+        { nom: "Pizza margherita", dlc: dlcCeMois, qte: 12 },
+      ];
+      rendreListe();
+    }
+  }
+
+  // Lancement
+  init();
+  // Décommenter la ligne suivante pour voir des données de démo :
+  // chargerDemo();
+</script>
+</body>
+</html>
