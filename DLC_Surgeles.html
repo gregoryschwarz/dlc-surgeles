@@ -425,6 +425,49 @@
       cursor: pointer;
       color: inherit;
     }
+
+    /* ONGLETS PAR MOIS */
+    .onglets-bar {
+      overflow-x: auto;
+      white-space: nowrap;
+      padding: 0 16px 12px;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    .onglets-bar::-webkit-scrollbar { display: none; }
+    .onglet {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 7px 13px;
+      border-radius: 20px;
+      border: 1.5px solid var(--gris-bord);
+      background: white;
+      color: var(--texte-doux);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-right: 8px;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+    .onglet.actif { color: white; }
+    .onglet.ot-tous.actif  { background: var(--bleu-fonce); border-color: var(--bleu-fonce); }
+    .onglet.ot-rouge.actif { background: var(--rouge);      border-color: var(--rouge); }
+    .onglet.ot-orange.actif{ background: var(--orange);     border-color: var(--orange); }
+    .onglet.ot-jaune.actif { background: var(--jaune);      border-color: var(--jaune); }
+    .onglet.ot-vert.actif  { background: var(--vert);       border-color: var(--vert); }
+    .onglet.ot-rouge:not(.actif)  { color: var(--rouge);  background: #FFF5F5; border-color: #FECACA; }
+    .onglet.ot-orange:not(.actif) { color: var(--orange); background: #FFF8F0; border-color: #FED7AA; }
+    .onglet.ot-jaune:not(.actif)  { color: #A16207;       background: #FEFCE8; border-color: #FEF08A; }
+    .onglet.ot-vert:not(.actif)   { color: #166534;       background: #F0FDF4; border-color: #BBF7D0; }
+    .onglet-n {
+      background: rgba(0,0,0,0.13);
+      border-radius: 10px;
+      padding: 1px 6px;
+      font-size: 11px;
+      font-weight: 700;
+    }
   </style>
 </head>
 <body>
@@ -498,6 +541,9 @@
 
 <!-- SECTION TITRE -->
 <div class="section-titre" id="sectionTitre">Tous les produits</div>
+
+<!-- ONGLETS PAR MOIS -->
+<div class="onglets-bar" id="ongletsBar"></div>
 
 <!-- LISTE -->
 <div class="liste" id="liste"></div>
@@ -604,6 +650,7 @@
   let dernierSupprime = null; // { item, idx } pour l'annulation
   let toastTimer = null;
   let afficherTraites = JSON.parse(localStorage.getItem('dlc_surgeles_afficher_traites') || 'false');
+  let ongletActif = 'tous';
 
   const CATEGORIES = {
     'Viande': '🥩', 'Poisson / Fruits de mer': '🐟', 'Légumes': '🥦',
@@ -744,20 +791,64 @@
     document.getElementById('sectionTitre').textContent =
       titres[filtreActif] + (recherche ? ` — "${recherche}"` : '');
 
+    // ── ONGLETS PAR MOIS ────────────────────────────────────────────────
+    const aujRef = new Date(); aujRef.setHours(0,0,0,0);
+    const getMoisCle = dlcStr => (dlcStr || '').slice(0, 7) || '9999-99';
+    const getMoisStatut = cle => {
+      if (cle === 'expires') return 'rouge';
+      const moisAuj = aujRef.getFullYear() * 12 + aujRef.getMonth();
+      const [y, m] = cle.split('-');
+      const diff = parseInt(y) * 12 + (parseInt(m) - 1) - moisAuj;
+      return diff < 0 ? 'rouge' : diff === 0 ? 'orange' : diff === 1 ? 'jaune' : 'vert';
+    };
+    const getMoisLabel = cle => {
+      if (cle === 'expires') return '❌ Expirés';
+      const noms = ['Jan.','Fév.','Mars','Avr.','Mai','Juin','Juil.','Août','Sept.','Oct.','Nov.','Déc.'];
+      const [y, m] = cle.split('-');
+      return noms[parseInt(m, 10) - 1] + ' ' + y;
+    };
+
+    const groupes = {};
+    affichage.forEach(p => {
+      const dlcDate = new Date(p.dlc + 'T00:00:00');
+      const cle = dlcDate < aujRef ? 'expires' : getMoisCle(p.dlc);
+      (groupes[cle] = groupes[cle] || []).push(p);
+    });
+    const clesTri = Object.keys(groupes).sort((a, b) => {
+      if (a === 'expires') return -1;
+      if (b === 'expires') return 1;
+      return a.localeCompare(b);
+    });
+    if (ongletActif !== 'tous' && !groupes[ongletActif]) ongletActif = 'tous';
+
+    const bar = document.getElementById('ongletsBar');
+    bar.innerHTML = [
+      `<button class="onglet ot-tous${ongletActif === 'tous' ? ' actif' : ''}" onclick="selectionnerOnglet('tous')">Tous <span class="onglet-n">${affichage.length}</span></button>`,
+      ...clesTri.map(cle => {
+        const st = getMoisStatut(cle);
+        const actif = ongletActif === cle;
+        return `<button class="onglet ot-${st}${actif ? ' actif' : ''}" onclick="selectionnerOnglet('${cle}')">${getMoisLabel(cle)} <span class="onglet-n">${groupes[cle].length}</span></button>`;
+      })
+    ].join('');
+    setTimeout(() => {
+      const el = bar.querySelector('.actif');
+      if (el) el.scrollIntoView({ block: 'nearest', inline: 'center' });
+    }, 30);
+
+    const affichageFinal = ongletActif === 'tous' ? affichage : (groupes[ongletActif] || []);
+
     // Rendu HTML
     const liste = document.getElementById('liste');
-    if (affichage.length === 0) {
+    if (affichageFinal.length === 0) {
       liste.innerHTML = `
         <div class="vide">
-          <div class="ic">${produits.length === 0 ? '🧊' : '🔍'}</div>
-          <p>${produits.length === 0
-            ? 'Aucun produit enregistré.<br>Appuyez sur <strong>+</strong> pour commencer.'
-            : 'Aucun produit dans cette catégorie.'}</p>
+          <div class="ic">🔍</div>
+          <p>Aucun produit dans cette catégorie.</p>
         </div>`;
       return;
     }
 
-    liste.innerHTML = affichage.map(p => `
+    liste.innerHTML = affichageFinal.map(p => `
       <div class="produit ${p._statut} ${p.traite ? 'traite' : ''}">
         <div class="badge-statut">${getEmoji(p._statut)}</div>
         <div class="produit-info">
@@ -800,6 +891,12 @@
     let i = SEQUENCE_TRI.findIndex(([f, s]) => f === triActif && s === triSens);
     i = (i + 1) % SEQUENCE_TRI.length;
     [triActif, triSens] = SEQUENCE_TRI[i];
+    rendreListe();
+  }
+
+  // ── ONGLETS ──────────────────────────────────────────────────────────
+  function selectionnerOnglet(cle) {
+    ongletActif = cle;
     rendreListe();
   }
 
